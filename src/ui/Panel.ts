@@ -501,6 +501,9 @@ export class Panel {
           rangeControl('Wave amount (vertex)', 0, 0.25, 0.01, uniforms.uWaveAmount, (v) => {
             this.playground.setShaderUniform('uWaveAmount', v);
           }),
+          rangeControl('Effect strength', 0, 1, 0.01, uniforms.uEffectStrength, (v) => {
+            this.playground.setShaderUniform('uEffectStrength', v);
+          }),
         );
 
         for (const [label, key] of [['Color A', 'uColorA'], ['Color B', 'uColorB']] as const) {

@@ -5,6 +5,7 @@ import type { MaterialPreset, LightPreset } from './milestones/config';
 import { centerAndScaleModel } from './utils/sceneGraph';
 import { ShaderController } from './shaders/ShaderController';
 import type { ShaderPresetId } from './shaders/presets';
+import { createGlassSlab, fitGlassToModel, createBackgroundRenderTarget, resizeBackgroundRenderTarget, renderBackgroundPass, updateGlassResolution } from './scene/glassSlab';
 
 export interface PlaygroundCallbacks {
   onModelLoaded: (animations: string[]) => void;
@@ -19,6 +20,7 @@ export class Playground {
   readonly clock = new THREE.Clock();
   readonly controls: OrbitControls;
   readonly modelGroup = new THREE.Group();
+  glassSlab!: THREE.Mesh;
   readonly lights = {
     ambient: new THREE.AmbientLight(0xffffff, 0),
     directional: new THREE.DirectionalLight(0xffffff, 0),
@@ -68,6 +70,7 @@ export class Playground {
   private frameCount = 0;
   private lastFpsTime = 0;
   private currentMilestone = 1;
+  private backgroundTarget!: THREE.WebGLRenderTarget;
   readonly shaderController = new ShaderController();
   fps = 0;
 
@@ -87,6 +90,8 @@ export class Playground {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -94,11 +99,18 @@ export class Playground {
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0.8, 0);
 
+    const w = this.canvas.clientWidth || 1;
+    const h = this.canvas.clientHeight || 1;
+    this.backgroundTarget = createBackgroundRenderTarget(w, h, this.renderer.getPixelRatio());
+
+    this.glassSlab = createGlassSlab(this.backgroundTarget.texture);
     this.lights.directional.position.set(3, 6, 4);
     this.lights.directional.castShadow = true;
     this.lights.point.position.set(-2, 3, 2);
 
     this.scene.add(this.modelGroup);
+    this.scene.add(this.glassSlab);
+    this.glassSlab.visible = false;
     this.scene.add(this.lights.ambient);
     this.scene.add(this.lights.directional);
     this.scene.add(this.lights.point);
@@ -127,6 +139,13 @@ export class Playground {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
+    resizeBackgroundRenderTarget(
+      this.backgroundTarget,
+      width,
+      height,
+      this.renderer.getPixelRatio(),
+    );
+    updateGlassResolution(this.glassSlab, width, height);
   }
 
   async loadModel(url: string): Promise<void> {
@@ -140,6 +159,8 @@ export class Playground {
 
       centerAndScaleModel(this.modelRoot, 2.5);
       this.baseScale = this.modelRoot.scale.x;
+      fitGlassToModel(this.glassSlab, this.modelRoot);
+
       this.modelRoot.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           child.castShadow = true;
@@ -201,9 +222,11 @@ export class Playground {
 
     if (milestone === 1) {
       this.modelGroup.visible = false;
+      this.glassSlab.visible = false;
       this.setAllLightsIntensity(0);
     } else {
       this.modelGroup.visible = true;
+      this.glassSlab.visible = true;
 
       if (milestone === 10) {
         this.setAllLightsIntensity(0);
@@ -596,7 +619,7 @@ export class Playground {
   }
 
   setShaderUniform(
-    key: 'uMix' | 'uNoiseScale' | 'uWaveAmount' | 'uColorA' | 'uColorB',
+    key: 'uMix' | 'uNoiseScale' | 'uWaveAmount' | 'uEffectStrength' | 'uColorA' | 'uColorB',
     value: number | string,
   ): void {
     this.shaderController.setUniform(key, value as never);
@@ -660,6 +683,16 @@ export class Playground {
         x: this.pointer.x,
         y: this.pointer.y,
       });
+    }
+
+    if (this.glassSlab.visible) {
+      renderBackgroundPass(
+        this.renderer,
+        this.scene,
+        this.camera,
+        this.backgroundTarget,
+        this.glassSlab,
+      );
     }
 
     this.renderer.render(this.scene, this.camera);

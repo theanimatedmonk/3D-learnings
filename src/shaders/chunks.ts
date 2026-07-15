@@ -4,6 +4,7 @@ export const VERTEX_PREAMBLE = /* glsl */ `
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
+varying vec3 vViewPosition;
 
 uniform float uTime;
 uniform float uWaveAmount;
@@ -26,11 +27,13 @@ precision highp float;
 varying vec2 vUv;
 varying vec3 vNormal;
 varying vec3 vWorldPosition;
+varying vec3 vViewPosition;
 
 uniform float uTime;
 uniform vec2 uMouse;
 uniform float uMix;
 uniform float uNoiseScale;
+uniform float uEffectStrength;
 uniform vec3 uColorA;
 uniform vec3 uColorB;
 `;
@@ -58,8 +61,10 @@ ${VERTEX_PREAMBLE}
 void main() {
   ${VERTEX_MAIN_BASE}
   ${displace ? VERTEX_DISPLACE : ''}
+  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
   vWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
+  vViewPosition = -mvPosition.xyz;
+  gl_Position = projectionMatrix * mvPosition;
 }
 `;
 

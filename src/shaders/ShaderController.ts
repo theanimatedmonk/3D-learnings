@@ -13,6 +13,7 @@ export interface ShaderUniforms {
   uMix: number;
   uNoiseScale: number;
   uWaveAmount: number;
+  uEffectStrength: number;
   uColorA: string;
   uColorB: string;
 }
@@ -23,6 +24,7 @@ const DEFAULT_UNIFORMS: ShaderUniforms = {
   uMix: 0.5,
   uNoiseScale: 4,
   uWaveAmount: 0.08,
+  uEffectStrength: 0.5,
   uColorA: '#6ee7b7',
   uColorB: '#3b82f6',
 };
@@ -120,6 +122,7 @@ export class ShaderController {
           uMix: { value: this.uniforms.uMix },
           uNoiseScale: { value: this.uniforms.uNoiseScale },
           uWaveAmount: { value: this.uniforms.uWaveAmount },
+          uEffectStrength: { value: this.uniforms.uEffectStrength },
           uColorA: { value: new THREE.Color(this.uniforms.uColorA) },
           uColorB: { value: new THREE.Color(this.uniforms.uColorB) },
         },
@@ -137,6 +140,7 @@ export class ShaderController {
       mat.uniforms.uMix.value = this.uniforms.uMix;
       mat.uniforms.uNoiseScale.value = this.uniforms.uNoiseScale;
       mat.uniforms.uWaveAmount.value = this.uniforms.uWaveAmount;
+      mat.uniforms.uEffectStrength.value = this.uniforms.uEffectStrength;
       mat.uniforms.uColorA.value.set(this.uniforms.uColorA);
       mat.uniforms.uColorB.value.set(this.uniforms.uColorB);
     }
