@@ -19,9 +19,11 @@ const playground = new Playground(canvas, {
         ? `Model loaded with ${animations.length} animation clip(s).`
         : 'Model loaded. Open Milestone 8 to load an animated GLB.',
     );
+    panel.syncGlassPosition(playground.getGlassPosition());
   },
   onSelect: (name) => panel.updateState({ selectedMesh: name }),
   onStatus: (message) => panel.setStatus(message),
+  onGlassPositionChange: (position) => panel.syncGlassPosition(position),
 });
 
 panel = new Panel(panelRoot, playground, {

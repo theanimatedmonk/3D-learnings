@@ -250,6 +250,7 @@ export interface PlaygroundState {
   selectedMesh: string | null;
   mouse: { x: number; y: number };
   fps: number;
+  glassPosition: { x: number; y: number; z: number };
 }
 
 export const DEFAULT_STATE: PlaygroundState = {
@@ -260,6 +261,7 @@ export const DEFAULT_STATE: PlaygroundState = {
   selectedMesh: null,
   mouse: { x: 0, y: 0 },
   fps: 0,
+  glassPosition: { x: 0, y: 1.05, z: 2.4 },
 };
 
 export function getMilestone(id: number): MilestoneConfig {

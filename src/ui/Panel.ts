@@ -21,11 +21,13 @@ function rangeControl(
   step: number,
   value: number,
   onChange: (v: number) => void,
+  id?: string,
 ): HTMLElement {
   const wrap = document.createElement('label');
   wrap.className = 'control';
   const valueEl = document.createElement('em');
   valueEl.textContent = String(value);
+  if (id) valueEl.id = `${id}-val`;
   const title = document.createElement('span');
   title.textContent = label;
   title.appendChild(valueEl);
@@ -35,6 +37,7 @@ function rangeControl(
   input.max = String(max);
   input.step = String(step);
   input.value = String(value);
+  if (id) input.id = id;
   input.addEventListener('input', () => {
     const v = Number(input.value);
     valueEl.textContent = String(v);
@@ -136,6 +139,22 @@ export class Panel {
     this.learnEl.appendChild(this.renderLearn(m));
     this.controlsEl.innerHTML = '';
     this.controlsEl.appendChild(this.renderControls(m.id));
+    if (this.state.milestone !== 1 && this.state.modelLoaded) {
+      this.controlsEl.appendChild(this.renderGlassControls());
+    }
+    this.renderStatus();
+  }
+
+  syncGlassPosition(position: { x: number; y: number; z: number }): void {
+    this.state = { ...this.state, glassPosition: position };
+    const round = (n: number) => Math.round(n * 100) / 100;
+    for (const axis of ['x', 'y', 'z'] as const) {
+      const input = this.controlsEl.querySelector(`#glass-${axis}`) as HTMLInputElement | null;
+      const valueEl = this.controlsEl.querySelector(`#glass-${axis}-val`);
+      const val = round(position[axis]);
+      if (input) input.value = String(val);
+      if (valueEl) valueEl.textContent = String(val);
+    }
     this.renderStatus();
   }
 
@@ -203,7 +222,62 @@ export class Panel {
     ];
     if (selectedMesh) parts.push(`Selected: ${selectedMesh}`);
     if (animations.length) parts.push(`Clips: ${animations.join(', ')}`);
+    if (this.state.milestone !== 1 && this.state.modelLoaded) {
+      const g = this.state.glassPosition;
+      parts.push(`Glass: (${g.x.toFixed(2)}, ${g.y.toFixed(2)}, ${g.z.toFixed(2)})`);
+    }
     this.statusEl.innerHTML = `<strong>Live:</strong> ${parts.join(' · ')}`;
+  }
+
+  private renderGlassControls(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'control-group';
+    wrap.appendChild((() => {
+      const h = document.createElement('h2');
+      h.className = 'section-title';
+      h.textContent = 'Glass Pane';
+      return h;
+    })());
+
+    const pos = this.playground.getGlassPosition();
+    const posState = { ...pos };
+
+    wrap.append(
+      rangeControl('Glass X', -4, 4, 0.05, pos.x, (v) => {
+        posState.x = v;
+        this.playground.setGlassPosition(posState.x, posState.y, posState.z);
+      }, 'glass-x'),
+      rangeControl('Glass Y', -1, 5, 0.05, pos.y, (v) => {
+        posState.y = v;
+        this.playground.setGlassPosition(posState.x, posState.y, posState.z);
+      }, 'glass-y'),
+      rangeControl('Glass Z', -2, 6, 0.05, pos.z, (v) => {
+        posState.z = v;
+        this.playground.setGlassPosition(posState.x, posState.y, posState.z);
+      }, 'glass-z'),
+      rangeControl('Aberration', 0, 3, 0.05, 1.2, (v) => {
+        this.playground.setGlassAberrationStrength(v);
+      }),
+      rangeControl('Crack intensity', 0, 2, 0.05, 1.0, (v) => {
+        this.playground.setGlassCrackIntensity(v);
+      }),
+      button(
+        this.playground.isGlassDragEnabled() ? 'Hide drag gizmo' : 'Show drag gizmo',
+        () => {
+          this.playground.setGlassDragEnabled(!this.playground.isGlassDragEnabled());
+          this.render();
+        },
+      ),
+      button('Reset glass position', () => this.playground.resetGlassPosition()),
+    );
+
+    const hint = document.createElement('p');
+    hint.className = 'hint';
+    hint.textContent =
+      'Drag the RGB axes gizmo on the glass pane in the viewport, or use the sliders above.';
+    wrap.appendChild(hint);
+
+    return wrap;
   }
 
   private renderControls(id: number): HTMLElement {

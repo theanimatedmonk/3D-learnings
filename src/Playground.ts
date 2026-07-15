@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { MaterialPreset, LightPreset } from './milestones/config';
 import { centerAndScaleModel } from './utils/sceneGraph';
 import { ShaderController } from './shaders/ShaderController';
 import type { ShaderPresetId } from './shaders/presets';
-import { createGlassSlab, fitGlassToModel, createBackgroundRenderTarget, resizeBackgroundRenderTarget, renderBackgroundPass, updateGlassResolution } from './scene/glassSlab';
+import { createGlassSlab, fitGlassToModel, createBackgroundRenderTarget, resizeBackgroundRenderTarget, renderBackgroundPass, updateGlassResolution, setGlassAberration, setGlassCracks } from './scene/glassSlab';
 
 export interface PlaygroundCallbacks {
   onModelLoaded: (animations: string[]) => void;
   onSelect: (name: string | null) => void;
   onStatus: (message: string) => void;
+  onGlassPositionChange?: (position: { x: number; y: number; z: number }) => void;
 }
 
 export class Playground {
@@ -71,6 +73,9 @@ export class Playground {
   private lastFpsTime = 0;
   private currentMilestone = 1;
   private backgroundTarget!: THREE.WebGLRenderTarget;
+  private glassTransform!: TransformControls;
+  private glassGizmo!: THREE.Object3D;
+  private glassDragEnabled = true;
   readonly shaderController = new ShaderController();
   fps = 0;
 
@@ -104,6 +109,22 @@ export class Playground {
     this.backgroundTarget = createBackgroundRenderTarget(w, h, this.renderer.getPixelRatio());
 
     this.glassSlab = createGlassSlab(this.backgroundTarget.texture);
+
+    this.glassTransform = new TransformControls(this.camera, canvas);
+    this.glassTransform.setMode('translate');
+    this.glassTransform.setSize(0.75);
+    this.glassTransform.attach(this.glassSlab);
+    this.glassGizmo = this.glassTransform.getHelper();
+    this.glassGizmo.visible = false;
+    this.glassTransform.enabled = false;
+    this.glassTransform.addEventListener('dragging-changed', (event) => {
+      this.controls.enabled = this.orbitEnabled && !(event.value as boolean);
+    });
+    this.glassTransform.addEventListener('change', () => {
+      this.emitGlassPosition();
+    });
+    this.scene.add(this.glassGizmo);
+
     this.lights.directional.position.set(3, 6, 4);
     this.lights.directional.castShadow = true;
     this.lights.point.position.set(-2, 3, 2);
@@ -160,6 +181,7 @@ export class Playground {
       centerAndScaleModel(this.modelRoot, 2.5);
       this.baseScale = this.modelRoot.scale.x;
       fitGlassToModel(this.glassSlab, this.modelRoot);
+      this.emitGlassPosition();
 
       this.modelRoot.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -223,10 +245,12 @@ export class Playground {
     if (milestone === 1) {
       this.modelGroup.visible = false;
       this.glassSlab.visible = false;
+      this.updateGlassGizmoVisibility();
       this.setAllLightsIntensity(0);
     } else {
       this.modelGroup.visible = true;
       this.glassSlab.visible = true;
+      this.updateGlassGizmoVisibility();
 
       if (milestone === 10) {
         this.setAllLightsIntensity(0);
@@ -609,6 +633,54 @@ export class Playground {
     });
   }
 
+  getGlassPosition(): { x: number; y: number; z: number } {
+    return {
+      x: this.glassSlab.position.x,
+      y: this.glassSlab.position.y,
+      z: this.glassSlab.position.z,
+    };
+  }
+
+  setGlassPosition(x: number, y: number, z: number): void {
+    this.glassSlab.position.set(x, y, z);
+    this.emitGlassPosition();
+  }
+
+  resetGlassPosition(): void {
+    if (!this.modelRoot) return;
+    fitGlassToModel(this.glassSlab, this.modelRoot);
+    this.emitGlassPosition();
+    this.callbacks.onStatus('Glass pane reset to default position.');
+  }
+
+  setGlassAberrationStrength(strength: number): void {
+    setGlassAberration(this.glassSlab, strength);
+  }
+
+  setGlassCrackIntensity(intensity: number): void {
+    setGlassCracks(this.glassSlab, intensity);
+  }
+
+  setGlassDragEnabled(enabled: boolean): void {
+    this.glassDragEnabled = enabled;
+    this.updateGlassGizmoVisibility();
+    this.callbacks.onStatus(enabled ? 'Glass drag gizmo enabled.' : 'Glass drag gizmo hidden.');
+  }
+
+  isGlassDragEnabled(): boolean {
+    return this.glassDragEnabled;
+  }
+
+  private emitGlassPosition(): void {
+    this.callbacks.onGlassPositionChange?.(this.getGlassPosition());
+  }
+
+  private updateGlassGizmoVisibility(): void {
+    const show = this.glassDragEnabled && this.glassSlab.visible;
+    this.glassGizmo.visible = show;
+    this.glassTransform.enabled = show;
+  }
+
   getModelRoot(): THREE.Object3D | null {
     return this.modelRoot;
   }
@@ -692,6 +764,7 @@ export class Playground {
         this.camera,
         this.backgroundTarget,
         this.glassSlab,
+        this.glassGizmo,
       );
     }
 
