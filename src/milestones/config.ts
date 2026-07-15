@@ -198,6 +198,40 @@ export const MILESTONES: MilestoneConfig[] = [
     ],
     success: 'You can explain the journey from GLB file to screen in simple words.',
   },
+  {
+    id: 10,
+    title: 'Shaders',
+    subtitle: 'Vertex & fragment shaders, uniforms, varyings, GPU visuals',
+    learn: [
+      'Vertex Shader — runs per vertex; positions geometry and passes data to the fragment stage.',
+      'Fragment Shader — runs per pixel; decides the final color of each pixel on screen.',
+      'Uniforms — values sent from JavaScript to the GPU (time, mouse, colors). Same for all pixels.',
+      'Varyings — data passed from vertex → fragment shader, interpolated across each triangle.',
+      'uTime — updated every frame for animation entirely on the GPU.',
+      'uMouse — screen position drives interactive effects like glow spots.',
+      'Noise — math that creates organic patterns without texture images.',
+      'UV Coordinates — 2D mapping wrapped onto 3D mesh surfaces (vUv).',
+      'Color Mixing — blend two colors with mix() driven by UV, time, or uniforms.',
+    ],
+    tasks: [
+      'Try each shader preset and watch the dinosaur change',
+      'Move the mouse — see the glow follow in Mouse Glow / Master presets',
+      'Adjust uMix, noise scale, and wave amount sliders',
+      'Change color A and color B',
+      'Click "Log Shader Code" and read the GLSL in the console',
+      'Try Vertex Wave — see vertices displaced in real time',
+    ],
+    experiment: [
+      'UV Map — red/green show U and V coordinates',
+      'Color Mix — slide uMix to blend teal and blue',
+      'Time Pulse — animated sine waves without moving the mesh',
+      'Mouse Glow — cursor creates a highlight on the surface',
+      'Noise — procedural spots using only math',
+      'Vertex Wave — ripple effect powered by the vertex shader',
+      'All Combined — every concept at once',
+    ],
+    success: 'You understand GPU-powered visuals and how shaders control what you see.',
+  },
 ];
 
 export type LightPreset = 'daylight' | 'sunset' | 'museum' | 'horror' | 'custom';

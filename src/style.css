@@ -222,3 +222,19 @@ button.action.danger {
     border-top: 1px solid var(--border);
   }
 }
+
+.shader-code {
+  width: 100%;
+  min-height: 140px;
+  max-height: 200px;
+  margin-top: 0.5rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--code-bg);
+  color: #a8b4c8;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  resize: vertical;
+}

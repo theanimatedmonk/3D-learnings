@@ -8,6 +8,7 @@ import {
   type PlaygroundState,
 } from '../milestones/config';
 import { inspectMaterials, inspectMeshes, printSceneGraph } from '../utils/sceneGraph';
+import { SHADER_PRESETS } from '../shaders/presets';
 
 type PanelHandlers = {
   onMilestoneChange: (id: number) => void;
@@ -463,6 +464,77 @@ export class Panel {
         wrap.append(
           button('Log Renderer Stats', () => console.log(this.playground.renderer.info.render)),
         );
+        break;
+      }
+
+      case 10: {
+        const uniforms = { ...this.playground.shaderController.getUniforms() };
+
+        const presetRow = document.createElement('div');
+        presetRow.className = 'preset-row';
+        for (const preset of SHADER_PRESETS) {
+          const btn = button(preset.label, () => {
+            this.playground.setShaderPreset(preset.id);
+            codePreview.value = this.playground.getShaderSource();
+            topicLabel.textContent = `${preset.topic} — ${preset.description}`;
+            this.setStatus(`Active: ${preset.label}`);
+          }, 'action primary');
+          presetRow.appendChild(btn);
+        }
+        wrap.appendChild(presetRow);
+
+        const topicLabel = document.createElement('p');
+        topicLabel.className = 'hint';
+        const active = SHADER_PRESETS.find((p) => p.id === this.playground.shaderController.getPresetId());
+        topicLabel.textContent = active
+          ? `${active.topic} — ${active.description}`
+          : 'Select a shader preset above.';
+        wrap.appendChild(topicLabel);
+
+        wrap.append(
+          rangeControl('uMix (color blend)', 0, 1, 0.01, uniforms.uMix, (v) => {
+            this.playground.setShaderUniform('uMix', v);
+          }),
+          rangeControl('Noise scale', 1, 12, 0.5, uniforms.uNoiseScale, (v) => {
+            this.playground.setShaderUniform('uNoiseScale', v);
+          }),
+          rangeControl('Wave amount (vertex)', 0, 0.25, 0.01, uniforms.uWaveAmount, (v) => {
+            this.playground.setShaderUniform('uWaveAmount', v);
+          }),
+        );
+
+        for (const [label, key] of [['Color A', 'uColorA'], ['Color B', 'uColorB']] as const) {
+          const lbl = document.createElement('label');
+          lbl.className = 'control';
+          lbl.textContent = label;
+          const input = document.createElement('input');
+          input.type = 'color';
+          input.value = uniforms[key];
+          input.addEventListener('input', () => {
+            this.playground.setShaderUniform(key, input.value);
+          });
+          lbl.appendChild(input);
+          wrap.appendChild(lbl);
+        }
+
+        wrap.append(
+          button('Log Shader Code (Console)', () => this.playground.logShaderSource()),
+        );
+
+        const codePreview = document.createElement('textarea');
+        codePreview.className = 'shader-code';
+        codePreview.readOnly = true;
+        codePreview.spellcheck = false;
+        codePreview.value = this.playground.getShaderSource();
+        wrap.appendChild(codePreview);
+
+        wrap.appendChild((() => {
+          const p = document.createElement('p');
+          p.className = 'hint';
+          p.textContent =
+            'Move the mouse over the canvas. Try UV Map first, then Time, Mouse, Noise, and Vertex Wave.';
+          return p;
+        })());
         break;
       }
     }

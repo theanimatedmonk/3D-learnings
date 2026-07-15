@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { MaterialPreset, LightPreset } from './milestones/config';
 import { centerAndScaleModel } from './utils/sceneGraph';
+import { ShaderController } from './shaders/ShaderController';
+import type { ShaderPresetId } from './shaders/presets';
 
 export interface PlaygroundCallbacks {
   onModelLoaded: (animations: string[]) => void;
@@ -65,6 +67,8 @@ export class Playground {
   private interactionEnabled = false;
   private frameCount = 0;
   private lastFpsTime = 0;
+  private currentMilestone = 1;
+  readonly shaderController = new ShaderController();
   fps = 0;
 
   constructor(canvas: HTMLCanvasElement, callbacks: PlaygroundCallbacks) {
@@ -154,6 +158,10 @@ export class Playground {
           ? `Loaded model with ${clipNames.length} animation(s).`
           : 'Model loaded. No embedded animations — try an animated GLB in Milestone 8.',
       );
+
+      if (this.currentMilestone === 10) {
+        this.shaderController.enable(this.modelRoot, this.shaderController.getPresetId());
+      }
     } catch (error) {
       console.error(error);
       this.callbacks.onStatus('Failed to load model. Check the path or upload a GLB.');
@@ -180,18 +188,39 @@ export class Playground {
   }
 
   setMilestone(milestone: number): void {
-    this.interactionEnabled = milestone >= 7;
+    const wasShaders = this.currentMilestone === 10;
+    this.currentMilestone = milestone;
+
+    this.interactionEnabled = milestone >= 7 && milestone !== 10;
     this.orbitEnabled = milestone >= 3;
     this.controls.enabled = this.orbitEnabled;
+
+    if (wasShaders && milestone !== 10 && this.modelRoot) {
+      this.shaderController.disable(this.modelRoot, this.originalMaterials);
+    }
 
     if (milestone === 1) {
       this.modelGroup.visible = false;
       this.setAllLightsIntensity(0);
     } else {
       this.modelGroup.visible = true;
-      if (milestone >= 4) {
+
+      if (milestone === 10) {
+        this.setAllLightsIntensity(0);
+        this.scene.background = new THREE.Color(0x080a10);
+        this.scene.fog = new THREE.Fog(0x080a10, 10, 35);
+        if (this.modelRoot) {
+          this.shaderController.enable(this.modelRoot, 'uv');
+        }
+      } else if (milestone >= 4) {
+        if (this.shaderController.isActive() && this.modelRoot) {
+          this.shaderController.disable(this.modelRoot, this.originalMaterials);
+        }
         this.applyLightPreset('daylight');
       } else {
+        if (this.shaderController.isActive() && this.modelRoot) {
+          this.shaderController.disable(this.modelRoot, this.originalMaterials);
+        }
         this.lights.ambient.intensity = 0.6;
         this.lights.ambient.visible = true;
         this.lights.directional.intensity = 0.8;
@@ -561,6 +590,27 @@ export class Playground {
     return this.modelRoot;
   }
 
+  setShaderPreset(preset: ShaderPresetId): void {
+    this.shaderController.setPreset(preset, this.modelRoot);
+    this.callbacks.onStatus(`Shader preset: ${preset}`);
+  }
+
+  setShaderUniform(
+    key: 'uMix' | 'uNoiseScale' | 'uWaveAmount' | 'uColorA' | 'uColorB',
+    value: number | string,
+  ): void {
+    this.shaderController.setUniform(key, value as never);
+  }
+
+  logShaderSource(): void {
+    this.shaderController.logShaderSource();
+    this.callbacks.onStatus('Shader GLSL logged to console.');
+  }
+
+  getShaderSource(): string {
+    return this.shaderController.getShaderSource();
+  }
+
   tick(): void {
     const delta = this.clock.getDelta();
     const elapsed = this.clock.elapsedTime * this.animationSpeed;
@@ -604,6 +654,13 @@ export class Playground {
     }
 
     this.mixer?.update(delta);
+
+    if (this.shaderController.isActive()) {
+      this.shaderController.update(this.clock.elapsedTime, {
+        x: this.pointer.x,
+        y: this.pointer.y,
+      });
+    }
 
     this.renderer.render(this.scene, this.camera);
     this.updateFps();

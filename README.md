@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually `http://localhost:5173`). Use the numbered buttons in the right panel to step through milestones 1–9.
+Open the URL shown in the terminal (usually `http://localhost:5173`). Use the numbered buttons in the right panel to step through milestones 1–10.
 
 ## What's included
 
@@ -24,6 +24,7 @@ Open the URL shown in the terminal (usually `http://localhost:5173`). Use the nu
 | 7 | OrbitControls, raycasting, click to highlight |
 | 8 | AnimationMixer — play/pause/speed (for animated GLBs) |
 | 9 | WebGL concepts — GLB → GPU → screen (conceptual) |
+| 10 | Shaders — vertex/fragment, uniforms, varyings, noise, UV, color mix |
 
 ## Dinosaur model
 
@@ -48,6 +49,10 @@ src/
     Panel.ts        — sidebar controls
   utils/
     sceneGraph.ts   — print scene graph, inspect meshes/materials
+  shaders/
+    ShaderController.ts — apply & update custom GLSL materials
+    presets.ts        — shader presets (UV, noise, mouse, time…)
+    chunks.ts         — shared GLSL snippets
 public/
   models/
     dinosaur.glb
